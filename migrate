@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+
+FMT = "%Y%m%d-%H%M%S"
+
+require "./config.rb"
+
+HOST = $config[:host]
+DATABASE = $config[:database]
+USER = $config[:user]
+
+case ARGV[0]
+when "init"
+  `psql -h #{HOST} -U #{USER} -f init/init.sql`
+when "new"
+  if !(name = ARGV.slice(1, ARGV.length)).empty?
+    name = "#{Time.now.utc.strftime(FMT)}_#{name.join("_")}.sql";
+    File.open(name, 'w').close
+  else
+    name = "#{Time.now.utc.strftime(FMT)}_changes.sql"
+    File.open(name, 'w').close
+  end
+when 'up'
+  if ARGV.include? "-R"
+	File.delete ".current" if File.exists? ".current"
+  end
+  
+  files = []
+  if File.exists? ".current"
+	last = File.open('.current').readlines.join("").strip;
+	p last
+	files = Dir["*.sql"].sort.drop_while {|f| f <= last}
+  else
+	files = Dir["*.sql"].sort;
+  end
+  
+  if !files.empty?
+	files.each { |f|
+      `psql #{DATABASE} -h #{HOST} -U #{USER} -f #{f}`
+    }
+    p files
+    File.open(".current", 'w') do |f|
+      f.write files.last
+    end
+  end
+end
