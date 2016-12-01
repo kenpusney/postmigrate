@@ -11,6 +11,9 @@ USER = $config[:user]
 case ARGV[0]
 when "init"
   `psql -h #{HOST} -U #{USER} -f init/init.sql`
+when "boot"
+   `mkdir -p init`
+   `touch init/init.sql`
 when "new"
   if !(name = ARGV.slice(1, ARGV.length)).empty?
     name = "#{Time.now.utc.strftime(FMT)}_#{name.join("_")}.sql";
@@ -35,11 +38,13 @@ when 'up'
   
   if !files.empty?
 	files.each { |f|
-      `psql #{DATABASE} -h #{HOST} -U #{USER} -f #{f}`
+      puts `psql #{DATABASE} -h #{HOST} -U #{USER} -f #{f}`
     }
     p files
     File.open(".current", 'w') do |f|
       f.write files.last
     end
   end
+else
+  puts "./migrate [ boot|init|new|up ]"
 end
